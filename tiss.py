@@ -1,4 +1,5 @@
 import requests
+import xml.etree.ElementTree as ET
 
 BASE_URL = "https://tiss.tuwien.ac.at/api"
 
@@ -51,33 +52,11 @@ SDG_KEYWORDS = {
     "SDG 16": ["justice", "institution", "privacy", "ethics", "governance"],
 }
 
-
-def get_courses_by_orgunit(org_code, semester="2025W"):
-    url = f"{BASE_URL}/course/orgUnit/{org_code}"
-    params = {"semester": semester}
-    cookies = {"TISS_AUTH": "08057e41dbfbabd8f0696440338a0be557e8f69ff9a040e9f196c22747fe5d22"}
-
-    try:
-        response = requests.get(url, params=params, cookies=cookies, timeout=10)
-        print(f"Status code: {response.status_code}")
-        print(f"Response: {response.text[:300]}")
-        response.raise_for_status()
-        data = response.json()
-        return data.get("courses", [])
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching org unit {org_code}: {e}")
-        return []
-
-
-def get_course_details(course_number, semester="2025W"):
-    url = f"{BASE_URL}/course/{course_number}-{semester}"
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching course {course_number}: {e}")
-        return {}
+NS = {
+    "c": "https://tiss.tuwien.ac.at/api/schemas/course/v10",
+    "i": "https://tiss.tuwien.ac.at/api/schemas/i18n/v10",
+    "c11": "https://tiss.tuwien.ac.at/api/schemas/course/v11",
+}
 
 
 def guess_domain(title, description=""):
@@ -97,48 +76,133 @@ def guess_sdg_tags(title, description=""):
     return tags[:3]
 
 
-def normalize_course(raw, semester="2025W"):
-    title = raw.get("title", {})
-    name = title.get("en") or title.get("de") or "Unknown Course"
-    number = raw.get("courseNumber", "")
-    ects = float(raw.get("ects", 3.0) or 3.0)
-    lang = raw.get("teachingLanguage", "German")
-    language = "English" if "en" in str(lang).lower() else "German"
-    enrollment = int(raw.get("maxParticipants", 50) or 50)
-    desc_raw = raw.get("description", {})
-    description = desc_raw.get("en") or desc_raw.get("de") or ""
+def parse_courses_from_xml(xml_text, semester="2025W"):
+    courses = []
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError as e:
+        print(f"  XML parse error: {e}")
+        return []
+
     sem_type = semester[-1]
     semester_label = "WS" if sem_type == "W" else "SS"
-    domain = guess_domain(name, description)
-    sdg_tags = guess_sdg_tags(name, description)
-    return {
-        "id": number,
-        "name": name,
-        "ects": round(ects, 1),
-        "domain": domain,
-        "difficulty": 2,
-        "language": language,
-        "semester": semester_label,
-        "prerequisites": [],
-        "sdg": len(sdg_tags) > 0,
-        "sdgTags": sdg_tags,
-        "programs": ["Business Informatics", "Computer Science"],
-        "enrollment": enrollment,
-        "description": description[:120] + "..." if len(description) > 120 else description,
-    }
+
+    course_elements = (
+        root.findall(".//c:course", NS) or
+        root.findall(".//c11:course", NS) or
+        root.findall(".//{https://tiss.tuwien.ac.at/api/schemas/course/v10}course") or
+        root.findall(".//{https://tiss.tuwien.ac.at/api/schemas/course/v11}course")
+    )
+
+    print(f"  Found {len(course_elements)} course elements in XML")
+
+    for course_el in course_elements:
+        number = (
+            course_el.get("courseNumber") or
+            course_el.get("nr") or ""
+        )
+        if not number:
+            child = course_el.find(".//{https://tiss.tuwien.ac.at/api/schemas/course/v10}courseNumber")
+            if child is not None and child.text:
+                number = child.text.strip()
+
+        if not number:
+            continue
+
+        name = ""
+        title_el = course_el.find("c:title", NS)
+        if title_el is not None:
+            en = title_el.find("i:en", NS)
+            de = title_el.find("i:de", NS)
+            if en is not None and en.text:
+                name = en.text.strip()
+            elif de is not None and de.text:
+                name = de.text.strip()
+        if not name:
+            name = course_el.get("title", number)
+
+        ects_raw = course_el.get("ects", "3.0")
+        try:
+            ects = round(float(ects_raw), 1)
+        except (ValueError, TypeError):
+            ects = 3.0
+
+        lang_raw = course_el.get("teachingLanguage", "German")
+        language = "English" if "en" in str(lang_raw).lower() else "German"
+
+        enroll_raw = course_el.get("maxParticipants", "50")
+        try:
+            enrollment = int(float(enroll_raw))
+            if enrollment == 0:
+                enrollment = 50
+        except (ValueError, TypeError):
+            enrollment = 50
+
+        description = ""
+        desc_el = course_el.find("c:description", NS)
+        if desc_el is not None:
+            en = desc_el.find("i:en", NS)
+            de = desc_el.find("i:de", NS)
+            if en is not None and en.text:
+                description = en.text.strip()
+            elif de is not None and de.text:
+                description = de.text.strip()
+        description = description[:120] + "..." if len(description) > 120 else description
+
+        domain = guess_domain(name, description)
+        sdg_tags = guess_sdg_tags(name, description)
+
+        courses.append({
+            "id": number,
+            "name": name,
+            "ects": ects,
+            "domain": domain,
+            "difficulty": 2,
+            "language": language,
+            "semester": semester_label,
+            "prerequisites": [],
+            "sdg": len(sdg_tags) > 0,
+            "sdgTags": sdg_tags,
+            "programs": ["Business Informatics", "Computer Science"],
+            "enrollment": enrollment,
+            "description": description,
+        })
+
+    return courses
+
+
+def get_courses_by_orgunit(org_code, semester="2025W"):
+    url = f"{BASE_URL}/course/orgUnit/{org_code}"
+    params = {"semester": semester}
+    cookies = {"TISS_AUTH": "08057e41dbfbabd8f0696440338a0be557e8f69ff9a040e9f196c22747fe5d22"}
+
+    try:
+        response = requests.get(url, params=params, cookies=cookies, timeout=15)
+        print(f"  Status: {response.status_code} | Size: {len(response.text)} chars")
+
+        if response.status_code != 200 or not response.text.strip():
+            return []
+
+        return parse_courses_from_xml(response.text, semester)
+
+    except requests.exceptions.RequestException as e:
+        print(f"  Request error for {org_code}: {e}")
+        return []
 
 
 def fetch_all_courses(semester="2025W"):
     all_courses = []
     seen_ids = set()
+
     for org_code in ORG_UNITS:
         print(f"Fetching courses from org unit {org_code}...")
         raw_courses = get_courses_by_orgunit(org_code, semester)
-        for raw in raw_courses:
-            number = raw.get("courseNumber", "")
-            if number and number not in seen_ids:
-                seen_ids.add(number)
-                course = normalize_course(raw, semester)
+
+        for course in raw_courses:
+            cid = course.get("id", "")
+            if cid and cid not in seen_ids:
+                seen_ids.add(cid)
                 all_courses.append(course)
+
     print(f"Total courses fetched: {len(all_courses)}")
     return all_courses
