@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CourseCompass — TU Wien</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; padding: 2rem 1rem; }
+
+    /* Header */
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; }
+    .logo { width: 40px; height: 40px; background: #1d4ed8; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; }
+    .header-text h1 { font-size: 22px; font-weight: 600; }
+    .header-text p { font-size: 13px; color: #6b7280; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; border-bottom: 1px solid #e5e7eb; }
+    .tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 16px; cursor: pointer; font-size: 14px; color: #6b7280; margin-bottom: -1px; font-family: inherit; }
+    .tab.active { color: #1d4ed8; font-weight: 600; border-bottom-color: #1d4ed8; }
+
+    /* Cards */
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+
+    /* Form elements */
+    label { display: block; font-size: 13px; font-weight: 500; color: #6b7280; margin-bottom: 6px; }
+    select, input[type="text"], input[type="number"] { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; font-family: inherit; background: white; }
+    select:focus, input:focus { outline: 2px solid #1d4ed8; border-color: transparent; }
+    .field { margin-bottom: 1rem; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+
+    /* Mode toggle */
+    .mode-toggle { display: flex; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+    .mode-btn { flex: 1; border: none; padding: 8px; cursor: pointer; font-size: 13px; font-family: inherit; background: white; color: #6b7280; }
+    .mode-btn.active { background: #eff6ff; color: #1d4ed8; font-weight: 600; }
+    .mode-hint { margin-top: 4px; font-size: 11px; color: #9ca3af; }
+
+    /* Buttons */
+    .btn-primary { width: 100%; padding: 10px; background: #1d4ed8; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-primary:hover { background: #1e40af; }
+    .btn-secondary { padding: 5px 12px; background: white; border: 1px solid #d1d5db; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; }
+    .btn-secondary:hover { background: #f9fafb; }
+
+    /* Formula box */
+    .formula-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px 14px; margin-bottom: 1rem; font-size: 12px; color: #6b7280; }
+    .formula-box strong { color: #1a1a1a; }
+
+    /* Course picker */
+    .course-picker { border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden; }
+    .search-row { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+    .search-input { border: none; background: none; outline: none; font-size: 13px; flex: 1; font-family: inherit; }
+    .course-list { max-height: 220px; overflow-y: auto; }
+    .course-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+    .course-item:hover { background: #f9fafb; }
+    .course-item.checked { background: #eff6ff; }
+    .course-item input[type="checkbox"] { cursor: pointer; }
+
+    /* Tags */
+    .tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+    .tag-ai { background: #dbeafe; color: #1e40af; }
+    .tag-se { background: #d1fae5; color: #065f46; }
+    .tag-es { background: #fce7f3; color: #9d174d; }
+    .tag-su { background: #dcfce7; color: #14532d; }
+    .tag-ms { background: #fef3c7; color: #78350f; }
+    .tag-ee { background: #ffedd5; color: #9a3412; }
+    .tag-ds { background: #ede9fe; color: #4c1d95; }
+    .sdg-badge { font-size: 10px; padding: 2px 7px; background: #dcfce7; color: #14532d; border-radius: 4px; font-weight: 500; }
+
+    /* Selected course pills */
+    .selected-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sel-tag { font-size: 12px; padding: 3px 10px; background: #f3f4f6; border-radius: 6px; display: flex; align-items: center; gap: 6px; }
+    .sel-tag button { background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 14px; padding: 0; line-height: 1; }
+
+    /* Recommendation cards */
+    .rec-card { background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 0.75rem; }
+    .rec-rank { font-size: 11px; color: #9ca3af; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    .rank-badge { background: #eff6ff; color: #1e40af; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+    .rec-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .rec-meta { font-size: 12px; color: #9ca3af; margin-bottom: 8px; }
+    .score-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .score-bar-bg { flex: 1; height: 4px; background: #e5e7eb; border-radius: 2px; }
+    .score-bar-fill { height: 100%; background: #1d4ed8; border-radius: 2px; }
+    .score-val { font-size: 12px; font-weight: 500; color: #6b7280; min-width: 32px; }
+    .explanation { font-size: 12px; color: #6b7280; padding: 8px 10px; background: #f9fafb; border-radius: 6px; line-height: 1.5; margin-top: 8px; }
+    .tags-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+    /* Admin metrics */
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 1.5rem; }
+    .metric-card { background: #f9fafb; border-radius: 10px; padding: 1rem; }
+    .metric-label { font-size: 12px; color: #9ca3af; margin-bottom: 4px; }
+    .metric-val { font-size: 24px; font-weight: 700; }
+    .metric-sub { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+
+    /* Domain bars */
+    .domain-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+    .domain-name { flex: 1; }
+    .enroll-bar-bg { width: 100px; height: 6px; background: #e5e7eb; border-radius: 3px; }
+    .enroll-bar-fill { height: 100%; border-radius: 3px; background: #1d4ed8; }
+
+    /* Admin table */
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+    .admin-table th { text-align: left; font-size: 11px; font-weight: 500; color: #9ca3af; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
+    .admin-table td { padding: 7px 8px; border-bottom: 1px solid #f3f4f6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .admin-table tr:hover td { background: #f9fafb; }
+    .scroll-table { max-height: 320px; overflow-y: auto; }
+    .filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .filter-chip { font-size: 11px; padding: 3px 10px; border-radius: 12px; cursor: pointer; border: 1px solid #d1d5db; background: white; font-family: inherit; }
+    .filter-chip.active { background: #eff6ff; color: #1d4ed8; border-color: #1d4ed8; font-weight: 600; }
+
+    /* Alerts */
+    .cold-start-note { font-size: 12px; color: #78350f; background: #fef3c7; padding: 8px 12px; border-radius: 8px; margin-bottom: 1rem; }
+    .no-results { text-align: center; padding: 2rem; color: #9ca3af; font-size: 14px; }
+    .loading { text-align: center; padding: 1.5rem; color: #9ca3af; font-size: 14px; }
+    .error-msg { font-size: 12px; color: #991b1b; background: #fef2f2; padding: 8px 12px; border-radius: 8px; margin-bottom: 1rem; }
+
+    /* Section title */
+    .section-title { font-size: 15px; font-weight: 600; margin-bottom: 0.75rem; }
+    .results-header { margin-bottom: 0.5rem; font-size: 14px; color: #6b7280; }
+    .diff-stars { font-size: 10px; color: #f59e0b; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">🧭</div>
+    <div class="header-text">
+      <h1>CourseCompass</h1>
+      <p id="subtitle">TU Wien elective course recommender · loading...</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('student')">Find courses</button>
+    <button class="tab" onclick="switchTab('admin')">Admin dashboard</button>
+  </div>
+
+  <!-- Student Tab -->
+  <div id="tab-student">
+    <div class="card">
+
+      <!-- Formula display -->
+      <div class="formula-box" id="formula-box">
+        Scoring: <strong>S = 0.6·C + 0.4·P</strong>
+        &nbsp;·&nbsp; C = content match &nbsp;·&nbsp; P = popularity
+      </div>
+
+      <!-- Program -->
+      <div class="field">
+        <label>Study program</label>
+        <select id="program-select">
+          <option>Business Informatics</option>
+          <option>Computer Science</option>
+          <option>Data Science</option>
+          <option>Electrical Engineering</option>
+          <option>Mathematics</option>
+          <option>Software Engineering</option>
+          <option>Sustainable Engineering</option>
+        </select>
+      </div>
+
+      <!-- Completed courses -->
+      <div class="field">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <label style="margin:0">Completed courses <span id="completed-count"></span></label>
+          <button class="btn-secondary" onclick="togglePicker()">Select courses</button>
+        </div>
+        <div id="selected-tags" class="selected-tags"></div>
+        <div id="course-picker" style="display:none;margin-top:8px">
+          <div class="course-picker">
+            <div class="search-row">
+              🔍 <input class="search-input" id="course-search" placeholder="Search courses..." oninput="filterCourses()" />
+            </div>
+            <div class="course-list" id="course-list">
+              <div class="loading">Loading courses...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mode + Results -->
+      <div class="two-col">
+        <div>
+          <label>Mode</label>
+          <div class="mode-toggle">
+            <button class="mode-btn active" id="btn-default" onclick="setMode('default')">Relevance</button>
+            <button class="mode-btn" id="btn-diversity" onclick="setMode('diversity')">Diversity</button>
+          </div>
+          <p class="mode-hint" id="mode-hint">Prioritises content match and popularity</p>
+        </div>
+        <div>
+          <label>Results: <span id="num-label">5</span></label>
+          <input type="range" min="3" max="10" step="1" value="5" oninput="document.getElementById('num-label').textContent=this.value" id="num-results" style="width:100%;margin-top:6px" />
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#9ca3af"><span>3</span><span>10</span></div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="getRecommendations()">Get recommendations</button>
+    </div>
+
+    <div id="results-area"></div>
+  </div>
+
+  <!-- Admin Tab -->
+  <div id="tab-admin" style="display:none">
+    <div id="admin-area"><div class="loading">Loading stats...</div></div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let allCourses = [];
+let completedIds = [];
+let mode = "default";
+let pickerOpen = false;
+let adminDomainFilter = "All";
+
+const DOMAIN_CLASS = {
+  "Artificial Intelligence": "tag-ai",
+  "Software Engineering": "tag-se",
+  "Ethics and Society": "tag-es",
+  "Sustainable Engineering": "tag-su",
+  "Mathematics and Statistics": "tag-ms",
+  "Electrical Engineering": "tag-ee",
+  "Data Science": "tag-ds",
+};
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  await loadCourses();
+}
+
+async function loadCourses() {
+  try {
+    const res = await fetch("/api/courses");
+    const data = await res.json();
+    allCourses = data.courses;
+    document.getElementById("subtitle").textContent =
+      `TU Wien elective course recommender · ${allCourses.length} courses · SDG 4 aligned`;
+    renderCourseList();
+  } catch (e) {
+    document.getElementById("subtitle").textContent = "Error loading courses";
+  }
+}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById("tab-student").style.display = tab === "student" ? "block" : "none";
+  document.getElementById("tab-admin").style.display = tab === "admin" ? "block" : "none";
+  document.querySelectorAll(".tab").forEach((t, i) => {
+    t.classList.toggle("active", (tab === "student" && i === 0) || (tab === "admin" && i === 1));
+  });
+  if (tab === "admin") loadAdminStats();
+}
+
+// ── Mode ───────────────────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById("btn-default").classList.toggle("active", m === "default");
+  document.getElementById("btn-diversity").classList.toggle("active", m === "diversity");
+  document.getElementById("mode-hint").textContent =
+    m === "default" ? "Prioritises content match and popularity" : "Boosts cross-domain exploration";
+  document.getElementById("formula-box").innerHTML = m === "default"
+    ? "Scoring: <strong>S = 0.6·C + 0.4·P</strong> &nbsp;·&nbsp; C = content &nbsp;·&nbsp; P = popularity"
+    : "Scoring: <strong>S = 0.3·C + 0.1·P + 0.6·D</strong> &nbsp;·&nbsp; C = content &nbsp;·&nbsp; P = popularity &nbsp;·&nbsp; D = diversity";
+}
+
+// ── Course picker ──────────────────────────────────────────────────────────
+function togglePicker() {
+  pickerOpen = !pickerOpen;
+  document.getElementById("course-picker").style.display = pickerOpen ? "block" : "none";
+}
+
+function renderCourseList() {
+  const q = (document.getElementById("course-search")?.value || "").toLowerCase();
+  const filtered = allCourses.filter(c =>
+    c.name.toLowerCase().includes(q) ||
+    c.id.toLowerCase().includes(q) ||
+    c.domain.toLowerCase().includes(q)
+  );
+  const list = document.getElementById("course-list");
+  if (!list) return;
+  list.innerHTML = filtered.map(c => {
+    const cls = DOMAIN_CLASS[c.domain] || "";
+    const checked = completedIds.includes(c.id);
+    return `<label class="course-item ${checked ? "checked" : ""}" style="cursor:pointer">
+      <input type="checkbox" ${checked ? "checked" : ""} onchange="toggleCourse('${c.id}')" />
+      <div style="flex:1">
+        <span style="font-weight:${checked?'600':'400'}">${c.name}</span>
+        <span style="font-size:11px;color:#9ca3af"> · ${c.id} · ${c.ects} ECTS</span>
+      </div>
+      <span class="tag ${cls}" style="font-size:10px">${c.domain.split(" ")[0]}</span>
+    </label>`;
+  }).join("") || "<div style='padding:12px;text-align:center;color:#9ca3af'>No courses found</div>";
+}
+
+function filterCourses() { renderCourseList(); }
+
+function toggleCourse(id) {
+  completedIds = completedIds.includes(id)
+    ? completedIds.filter(c => c !== id)
+    : [...completedIds, id];
+  renderSelectedTags();
+  renderCourseList();
+}
+
+function renderSelectedTags() {
+  const el = document.getElementById("selected-tags");
+  const countEl = document.getElementById("completed-count");
+  if (completedIds.length) {
+    countEl.innerHTML = `<span style="background:#eff6ff;color:#1e40af;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600">${completedIds.length}</span>`;
+    el.innerHTML = completedIds.map(id =>
+      `<span class="sel-tag">${id} <button onclick="toggleCourse('${id}')">×</button></span>`
+    ).join("");
+  } else {
+    countEl.innerHTML = "";
+    el.innerHTML = `<span style="font-size:13px;color:#9ca3af;font-style:italic">No courses selected — cold-start mode will be used</span>`;
+  }
+}
+
+// ── Recommendations ────────────────────────────────────────────────────────
+async function getRecommendations() {
+  const program = document.getElementById("program-select").value;
+  const numResults = parseInt(document.getElementById("num-results").value);
+  const area = document.getElementById("results-area");
+  area.innerHTML = `<div class="loading">Finding best courses for you...</div>`;
+
+  try {
+    const res = await fetch("/api/recommend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ program, completed_ids: completedIds, mode, num_results: numResults }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      area.innerHTML = `<div class="error-msg">Error: ${data.error}</div>`;
+      return;
+    }
+
+    const recs = data.recommendations;
+    if (!recs.length) {
+      area.innerHTML = `<div class="no-results">No eligible courses found. Try adjusting your completed courses.</div>`;
+      return;
+    }
+
+    const coldNote = completedIds.length === 0
+      ? `<div class="cold-start-note">⚠ Cold-start mode: no course history detected. Recommendations based on program and popularity.</div>`
+      : "";
+
+    const cards = recs.map((c, i) => {
+      const cls = DOMAIN_CLASS[c.domain] || "";
+      const pct = Math.round(c.score * 100);
+      const sdgBadges = (c.sdgTags || []).map(t => `<span class="sdg-badge">${t}</span>`).join(" ");
+      const prereqs = (c.prerequisites || []).length
+        ? `<span class="tag" style="background:#f3f4f6;color:#4b5563">Prereq: ${c.prerequisites.join(", ")}</span>`
+        : "";
+      const diff = ["", "★", "★★", "★★★", "★★★★"][c.difficulty] || "";
+      return `<div class="rec-card">
+        <div class="rec-rank">
+          <span class="rank-badge">#${i + 1}</span>
+          <span>${c.id}</span>
+          <span style="margin-left:auto" class="diff-stars">${diff}</span>
+        </div>
+        <div class="rec-name">${c.name}</div>
+        <div class="rec-meta">${c.ects} ECTS · ${c.semester} · ${c.language}</div>
+        <div class="score-row">
+          <div class="score-bar-bg"><div class="score-bar-fill" style="width:${pct}%"></div></div>
+          <span class="score-val">${c.score.toFixed(2)}</span>
+        </div>
+        <div class="tags-row">
+          <span class="tag ${cls}">${c.domain}</span>
+          ${sdgBadges}
+          ${prereqs}
+        </div>
+        <div class="explanation">${c.explanation}</div>
+      </div>`;
+    }).join("");
+
+    area.innerHTML = `
+      <p class="results-header">Results for <strong>${data.program}</strong> · ${data.mode} mode · ${data.total_eligible} eligible courses</p>
+      ${coldNote}
+      ${cards}
+    `;
+  } catch (e) {
+    area.innerHTML = `<div class="error-msg">Failed to connect to server. Make sure Flask is running.</div>`;
+  }
+}
+
+// ── Admin Dashboard ────────────────────────────────────────────────────────
+async function loadAdminStats() {
+  try {
+    const [statsRes, coursesRes] = await Promise.all([
+      fetch("/api/stats"),
+      fetch("/api/courses"),
+    ]);
+    const stats = await statsRes.json();
+    const coursesData = await coursesRes.json();
+    renderAdmin(stats, coursesData.courses);
+  } catch (e) {
+    document.getElementById("admin-area").innerHTML = `<div class="error-msg">Failed to load admin data.</div>`;
+  }
+}
+
+function renderAdmin(stats, courses) {
+  const domains = Object.keys(stats.domains);
+  const maxEnr = Math.max(...Object.values(stats.domains).map(d => d.avg_enrollment));
+
+  const metrics = `<div class="metric-grid">
+    <div class="metric-card"><div class="metric-label">Total courses</div><div class="metric-val">${stats.total_courses}</div><div class="metric-sub">in catalog</div></div>
+    <div class="metric-card"><div class="metric-label">SDG-tagged</div><div class="metric-val">${stats.sdg_courses}</div><div class="metric-sub">${stats.sdg_percentage}% of catalog</div></div>
+    <div class="metric-card"><div class="metric-label">Avg enrollment</div><div class="metric-val">${stats.avg_enrollment}</div><div class="metric-sub">students / course</div></div>
+    <div class="metric-card"><div class="metric-label">Domains</div><div class="metric-val">${domains.length}</div><div class="metric-sub">coverage areas</div></div>
+  </div>`;
+
+  const domainRows = domains.map(d => {
+    const info = stats.domains[d];
+    const pct = Math.round((info.avg_enrollment / maxEnr) * 100);
+    const cls = DOMAIN_CLASS[d] || "";
+    return `<div class="domain-row">
+      <span class="domain-name"><span class="tag ${cls}">${d}</span></span>
+      <span style="font-size:12px;color:#9ca3af">${info.count} courses</span>
+      <div class="enroll-bar-bg"><div class="enroll-bar-fill" style="width:${pct}%"></div></div>
+      <span style="font-size:12px;min-width:32px;text-align:right;color:#9ca3af">~${info.avg_enrollment}</span>
+      <span style="font-size:11px;min-width:36px;text-align:right;color:${info.sdg_count?'#14532d':'#9ca3af'}">${info.sdg_count} SDG</span>
+    </div>`;
+  }).join("");
+
+  const filterBtns = ["All", ...domains].map(d =>
+    `<button class="filter-chip ${adminDomainFilter === d ? 'active' : ''}" onclick="setAdminFilter('${d}')">${d === "All" ? "All" : d.split(" ")[0]}</button>`
+  ).join("");
+
+  const filtered = adminDomainFilter === "All" ? courses : courses.filter(c => c.domain === adminDomainFilter);
+  const tableRows = filtered.map(c => {
+    const cls = DOMAIN_CLASS[c.domain] || "";
+    const pct = Math.round((c.enrollment / 180) * 100);
+    return `<tr>
+      <td style="font-weight:600;width:80px">${c.id}</td>
+      <td style="width:220px">${c.name}</td>
+      <td style="width:100px"><span class="tag ${cls}" style="font-size:10px">${c.domain.split(" ")[0]}</span></td>
+      <td style="text-align:center;width:50px">${c.ects}</td>
+      <td style="width:100px"><div style="display:flex;align-items:center;gap:6px"><div style="width:50px;height:4px;background:#e5e7eb;border-radius:2px"><div style="width:${pct}%;height:100%;background:#1d4ed8;border-radius:2px"></div></div>${c.enrollment}</div></td>
+      <td style="text-align:center;width:50px">${c.sdg ? '<span class="sdg-badge">Yes</span>' : ''}</td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("admin-area").innerHTML = `
+    ${metrics}
+    <div class="card" style="margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+        <p class="section-title" style="margin:0">Enrollment by domain</p>
+        <button class="btn-secondary" onclick="refreshCourses()">Refresh from TISS</button>
+      </div>
+      ${domainRows}
+    </div>
+    <div class="card">
+      <p class="section-title">Course catalog (${filtered.length})</p>
+      <div class="filter-row">${filterBtns}</div>
+      <div class="scroll-table">
+        <table class="admin-table">
+          <thead><tr><th>ID</th><th>Name</th><th>Domain</th><th>ECTS</th><th>Enrollment</th><th>SDG</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function setAdminFilter(domain) {
+  adminDomainFilter = domain;
+  loadAdminStats();
+}
+
+async function refreshCourses() {
+  const btn = event.target;
+  btn.textContent = "Refreshing...";
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ semester: "2025W" }),
+    });
+    const data = await res.json();
+    alert(data.message);
+    await loadCourses();
+    await loadAdminStats();
+  } catch (e) {
+    alert("Refresh failed. TISS API may be unavailable.");
+  }
+  btn.textContent = "Refresh from TISS";
+  btn.disabled = false;
+}
+
+// ── Start ──────────────────────────────────────────────────────────────────
+renderSelectedTags();
+init();
+</script>
+</body>
+</html>
