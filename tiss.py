@@ -3,8 +3,7 @@ import xml.etree.ElementTree as ET
 
 BASE_URL = "https://tiss.tuwien.ac.at/api"
 
-ORG_UNITS = ["E194", "E193", "E192", "E188", "E185"]
-
+ORG_UNITS = ["E194", "E193", "E192", "E188", "E185", "E184", "E183", "E101", "E105"]
 DOMAIN_MAP = {
     "machine learning": "Artificial Intelligence",
     "deep learning": "Artificial Intelligence",
